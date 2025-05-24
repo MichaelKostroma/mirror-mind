@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light theme - softer, gentler colors */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 20%;
+
+    --primary: 196 70% 45%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 20%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 50%;
+
+    --accent: 196 70% 95%;
+    --accent-foreground: 222 47% 20%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 196 70% 45%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar colors */
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 222 47% 20%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-accent: 196 70% 95%;
+    --sidebar-accent-foreground: 222 47% 20%;
+    --sidebar-ring: 196 70% 45%;
+
+    /* Chart colors */
+    --chart-1: 196 70% 45%;
+    --chart-2: 196 70% 60%;
+    --chart-3: 196 70% 75%;
+    --chart-4: 222 47% 50%;
+    --chart-5: 222 47% 70%;
+  }
+
+  .dark {
+    /* Dark theme - current design */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 14%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 14%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 196 80% 50%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 196 80% 50%;
+
+    /* Sidebar colors */
+    --sidebar: 222 47% 14%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-accent: 217 33% 22%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-ring: 196 80% 50%;
+
+    /* Chart colors */
+    --chart-1: 196 80% 50%;
+    --chart-2: 196 80% 70%;
+    --chart-3: 196 80% 90%;
+    --chart-4: 210 40% 70%;
+    --chart-5: 210 40% 90%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+.mirror-gradient {
+  background: linear-gradient(135deg, hsl(196, 70%, 45%), hsl(196, 70%, 60%));
+}
+
+.mirror-gradient-text {
+  background: linear-gradient(135deg, hsl(196, 70%, 45%), hsl(196, 70%, 60%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Dark mode gradient adjustments */
+.dark .mirror-gradient {
+  background: linear-gradient(135deg, hsl(196, 80%, 50%), hsl(196, 80%, 70%));
+}
+
+.dark .mirror-gradient-text {
+  background: linear-gradient(135deg, hsl(196, 80%, 50%), hsl(196, 80%, 70%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
