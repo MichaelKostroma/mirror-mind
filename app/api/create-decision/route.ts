@@ -3,8 +3,12 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { analyzeDecision } from "@/lib/openai"
 import { DecisionData } from "@/lib/types"
+import { NextRequest } from "next/server"
 
-export async function POST(request: Request) {
+// Specify Node.js runtime for OpenAI SDK compatibility
+export const runtime = 'nodejs'
+
+export async function POST(request: NextRequest) {
     console.log("🎯 Create decision endpoint called")
 
     try {
@@ -52,18 +56,25 @@ export async function POST(request: Request) {
 
         console.log("✅ Decision created with ID:", newDecision.id)
 
-        // Return immediately to the client
-        const response = NextResponse.json({
+        // Start analysis in the background without awaiting it
+        console.log("🚀 Starting background analysis...")
+        const backgroundTask = analyzeDecisionInBackground(newDecision.id, { title, situation, decision, reasoning })
+
+        // Use waitUntil to ensure the background task completes even after response is returned
+        if (request.signal?.waitUntil) {
+            request.signal.waitUntil(backgroundTask);
+        } else {
+            // For non-Vercel environments (like local development), start the task without awaiting
+            // This won't block the response, but the task might not complete if the server terminates too quickly
+            backgroundTask.catch(error => console.error("❌ Background analysis error:", error));
+        }
+
+        // Create and return the response object immediately
+        return NextResponse.json({
             success: true,
             decision: newDecision,
             message: "Decision created successfully. Analysis is starting in the background.",
         })
-
-        // Start analysis in the background (don't await this)
-        console.log("🚀 Starting background analysis...")
-        analyzeDecisionInBackground(newDecision.id, { title, situation, decision, reasoning })
-
-        return response
     } catch (error: unknown) {
         console.error("❌ Create decision error:", error)
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -86,7 +97,8 @@ async function analyzeDecisionInBackground(
 
     try {
         // Create a new Supabase client for the background operation
-        const supabase = createServerComponentClient({ cookies })
+        const cookieStore = cookies()
+        const supabase = createServerComponentClient({ cookies: () => cookieStore })
 
         // Update status to pending (in case it wasn't set)
         await supabase.from("decisions").update({ analysis_status: "pending" }).eq("id", decisionId)

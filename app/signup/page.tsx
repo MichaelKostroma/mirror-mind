@@ -121,8 +121,7 @@ export default function Signup() {
               <Alert>
                 <Mail className="h-4 w-4" />
                 <AlertDescription>
-                  Please check your email and click the confirmation link to activate your account. You can then log in
-                  to start using Mirror Mind.
+                  Please check your email (spam folder as well) and click the confirmation link to activate your account.
                 </AlertDescription>
               </Alert>
             </CardContent>

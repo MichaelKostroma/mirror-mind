@@ -1,17 +1,9 @@
 <div style="padding: 20px">
 <div align="center">
-  <table style="border: none;">
-    <tr style="border: none;">
-      <td style="border: none; vertical-align: middle; text-align: center;">
-        <img src="public/favicon.svg" alt="Mirror Mind Logo" width="100" height="auto" />
-      </td>
-      <td style="border: none; vertical-align: middle; text-align: center;">
-        <b><font size="7">Mirror Mind</font></b>
-      </td>
-    </tr>
-  </table>
-  <h3>Pause • Ponder • Thrive</h3>
-  <p>An AI-powered decision journal to help you make better choices</p>
+<img src="public/favicon.svg" alt="Mirror Mind Logo" width="100" height="auto" />
+<b><font size="7">Mirror Mind</font></b>
+<h3>Pause • Ponder • Thrive</h3>
+<p>An AI-powered decision journal to help you make better choices</p>
 
   [![Next.js](https://img.shields.io/badge/Next.js-15.2.4-black?style=flat-square&logo=next.js)](https://nextjs.org/)
   [![React](https://img.shields.io/badge/React-18.2.0-blue?style=flat-square&logo=react)](https://reactjs.org/)
@@ -85,8 +77,6 @@ Mirror Mind is built with modern technologies:
 
 - **Development**:
   - [TypeScript](https://www.typescriptlang.org/) - Type safety
-  - [Zod](https://zod.dev/) - Schema validation
-  - [React Hook Form](https://react-hook-form.com/) - Form handling
 
 ## 📖 Usage
 

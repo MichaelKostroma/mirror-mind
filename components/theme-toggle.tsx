@@ -26,7 +26,7 @@ export function ThemeToggle() {
   // Show a placeholder while not mounted
   if (!mounted) {
     return (
-      <Button variant="ghost" size="icon" aria-label="Toggle theme">
+      <Button variant="ghost" className="h-7 w-7" aria-label="Toggle theme">
         <Sun className="h-[1.2rem] w-[1.2rem]" />
         <span className="sr-only">Toggle theme</span>
       </Button>
@@ -36,7 +36,6 @@ export function ThemeToggle() {
   return (
     <Button
       variant="ghost"
-      size="icon"
       className="h-7 w-7"
       onClick={toggleTheme}
       aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}

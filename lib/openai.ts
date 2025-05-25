@@ -1,9 +1,12 @@
 import OpenAI from "openai"
 import { DecisionData, AnalysisResult } from "@/lib/types"
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Initialize OpenAI client when needed to ensure environment variables are available
+function getOpenAIClient() {
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  })
+}
 
 export async function analyzeDecision(data: DecisionData): Promise<AnalysisResult> {
   console.log("🤖 Starting OpenAI analysis for decision:", data.title)
@@ -13,6 +16,7 @@ export async function analyzeDecision(data: DecisionData): Promise<AnalysisResul
   }
 
   // Detect the language of the input
+  const openai = getOpenAIClient()
   const detectLanguageResponse = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [
@@ -58,6 +62,7 @@ export async function analyzeDecision(data: DecisionData): Promise<AnalysisResul
   try {
     console.log("📡 Making OpenAI API call...")
 
+    // Reuse the same OpenAI client instance
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
