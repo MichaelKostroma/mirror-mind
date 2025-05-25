@@ -5,10 +5,10 @@ import { analyzeDecision } from "@/lib/openai"
 import { DecisionData } from "@/lib/types"
 import { NextRequest } from "next/server"
 
-// Specify Node.js runtime for OpenAI SDK compatibility
-export const runtime = 'nodejs'
+export const runtime = 'edge';
 
-export async function POST(request: NextRequest) {
+
+export async function POST(request: NextRequest,  context: { waitUntil?: (p: Promise<any>) => void }) {
     console.log("🎯 Create decision endpoint called")
 
     try {
@@ -56,19 +56,15 @@ export async function POST(request: NextRequest) {
 
         console.log("✅ Decision created with ID:", newDecision.id)
 
-        // Start analysis in the background without awaiting it
-        console.log("🚀 Starting background analysis...")
-        const backgroundTask = analyzeDecisionInBackground(newDecision.id, { title, situation, decision, reasoning })
+        const bg = analyzeDecisionInBackground(newDecision.id, { title, situation, decision, reasoning })
 
-        // Use waitUntil to ensure the background task completes even after response is returned
-        if (request.signal?.waitUntil) {
-            request.signal.waitUntil(backgroundTask);
+        if (typeof context.waitUntil === 'function') {
+            // on Vercel Edge: schedules without blocking the response
+            context.waitUntil(bg)
         } else {
-            // For non-Vercel environments (like local development), start the task without awaiting
-            // This won't block the response, but the task might not complete if the server terminates too quickly
-            backgroundTask.catch(error => console.error("❌ Background analysis error:", error));
+            // locally: kick it off but don't block (dev server will stay alive long enough)
+            bg.catch(err => console.error("❌ Background analysis failed:", err))
         }
-
         // Create and return the response object immediately
         return NextResponse.json({
             success: true,
@@ -138,7 +134,8 @@ async function analyzeDecisionInBackground(
 
         try {
             // Mark as failed
-            const supabase = createServerComponentClient({ cookies })
+            const cookieStore = cookies()
+            const supabase = createServerComponentClient({ cookies: () => cookieStore })
             await supabase.from("decisions").update({ analysis_status: "failed" }).eq("id", decisionId)
             console.log("📝 Decision marked as failed")
         } catch (markFailedError: unknown) {
