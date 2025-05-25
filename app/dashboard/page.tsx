@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { DecisionCard } from "@/components/decision-card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Plus, Database, AlertTriangle, RefreshCcw, Search, Filter } from "lucide-react"
+import { Plus, AlertTriangle, RefreshCcw, Search, Filter } from "lucide-react"
 import { EmptyState } from "@/components/empty-state"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,13 +15,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { getCurrentUser } from "@/lib/supabase/auth-utils"
 import { useToast } from "@/components/ui/use-toast"
 import { MirrorLogo } from "@/components/mirror-logo"
+import { Decision, User } from "@/lib/types"
 
 export default function Dashboard() {
-  const [decisions, setDecisions] = useState<any[] | null>(null)
+  const [decisions, setDecisions] = useState<Decision[] | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const [isTableMissing, setIsTableMissing] = useState(false)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "alphabetical">("newest")
   const [hasPendingDecisions, setHasPendingDecisions] = useState(false)
@@ -58,7 +58,7 @@ export default function Dashboard() {
           return
         }
         setUser(currentUser)
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Auth error:", error)
         window.location.href = "/login"
       }
@@ -71,17 +71,7 @@ export default function Dashboard() {
   const fetchDecisions = async (userId: string) => {
     try {
       const supabase = getSupabaseClient()
-      // Check if the table exists
-      const { error: tableCheckError } = await supabase.from("decisions").select("id").limit(1)
-
-      if (
-          tableCheckError &&
-          (tableCheckError.message.includes("relation") || tableCheckError.message.includes("does not exist"))
-      ) {
-        setIsTableMissing(true)
-        setIsLoading(false)
-        return
-      }
+      // Skip table existence check as the database is already created
 
       // Fetch decisions with retry logic for rate limiting
       let retries = 0
@@ -92,9 +82,9 @@ export default function Dashboard() {
         try {
           const { data, error: fetchError } = await supabase
               .from("decisions")
-              .select("id, title, situation, decision, created_at, analysis_status, analysis_category")
+              .select("id, user_id, title, situation, decision, created_at, analysis_status, analysis_category")
               .eq("user_id", userId)
-              .order("created_at", { ascending: false })
+              .order("created_at", { ascending: false }) as { data: Decision[] | null, error: any }
 
           if (fetchError) {
             // If it's a rate limit error, retry after a delay
@@ -111,18 +101,19 @@ export default function Dashboard() {
             throw fetchError
           }
 
-          setDecisions(data || [])
+          setDecisions((data || []) as Decision[])
 
           // Check if there are any pending decisions
-          const pendingCount = (data || []).filter((d) => d.analysis_status === "pending").length
+          const pendingCount = ((data || []) as Decision[]).filter((d) => d.analysis_status === "pending").length
           setHasPendingDecisions(pendingCount > 0)
 
           success = true
-        } catch (err: any) {
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
           if (
-              err.message?.includes("429") ||
-              err.message?.includes("Too Many") ||
-              err.message?.includes("rate limit")
+              errorMessage.includes("429") ||
+              errorMessage.includes("Too Many") ||
+              errorMessage.includes("rate limit")
           ) {
             retries++
             // Exponential backoff
@@ -136,9 +127,9 @@ export default function Dashboard() {
       if (!success) {
         throw new Error("Failed to fetch decisions after multiple retries")
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error fetching decisions:", err)
-      setError(err)
+      setError(err instanceof Error ? err : new Error(String(err)))
     } finally {
       setIsLoading(false)
     }
@@ -191,8 +182,8 @@ export default function Dashboard() {
             } else if (sortOrder === "oldest") {
               return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
             } else {
-              // alphabetical
-              return a.title.localeCompare(b.title)
+              // alphabetical - handle cases where title might be undefined or null
+              return (a.title || "").localeCompare(b.title || "")
             }
           })
       : []
@@ -206,10 +197,6 @@ export default function Dashboard() {
           </div>
         </div>
     )
-  }
-
-  if (isTableMissing) {
-    return <DatabaseSetupGuide />
   }
 
   if (error) {
@@ -321,94 +308,6 @@ export default function Dashboard() {
               ))}
             </div>
         )}
-      </div>
-  )
-}
-
-function DatabaseSetupGuide() {
-  return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Database Setup Required</h1>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Database className="mr-2 h-5 w-5" />
-              Database Setup Required
-            </CardTitle>
-            <CardDescription>The database tables for Mirror Mind haven't been created yet.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Missing Database Tables</AlertTitle>
-              <AlertDescription>
-                The "decisions" table doesn't exist in your Supabase database. Click the button below to create the
-                necessary tables.
-              </AlertDescription>
-            </Alert>
-
-            <div className="bg-muted p-4 rounded-md overflow-auto">
-            <pre className="text-xs">
-              {`-- This will create the decisions table and set up the necessary security policies
-CREATE TABLE IF NOT EXISTS decisions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  situation TEXT NOT NULL,
-  decision TEXT NOT NULL,
-  reasoning TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  analysis_status TEXT NOT NULL DEFAULT 'pending',
-  analysis_category TEXT,
-  cognitive_biases TEXT[],
-  missed_alternatives TEXT[],
-  analysis_summary TEXT
-);
-
--- Create an index on user_id for faster queries
-CREATE INDEX IF NOT EXISTS decisions_user_id_idx ON decisions(user_id);
-
--- Set up Row Level Security (RLS)
-ALTER TABLE decisions ENABLE ROW LEVEL SECURITY;
-
--- Create a policy that allows users to only see their own decisions
-CREATE POLICY "Users can only view their own decisions"
-  ON decisions
-  FOR SELECT
-  USING (auth.uid() = user_id);
-
--- Create a policy that allows users to only insert their own decisions
-CREATE POLICY "Users can only insert their own decisions"
-  ON decisions
-  FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
--- Create a policy that allows users to only update their own decisions
-CREATE POLICY "Users can only update their own decisions"
-  ON decisions
-  FOR UPDATE
-  USING (auth.uid() = user_id);
-
--- Create a policy that allows users to only delete their own decisions
-CREATE POLICY "Users can only delete their own decisions"
-  ON decisions
-  FOR DELETE
-  USING (auth.uid() = user_id);`}
-            </pre>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-4">
-            <Link href="/dashboard/setup-database" className="w-full">
-              <Button className="w-full">Create Database Tables</Button>
-            </Link>
-            <p className="text-sm text-muted-foreground text-center">
-              After creating the tables, you'll be redirected back to the dashboard.
-            </p>
-          </CardFooter>
-        </Card>
       </div>
   )
 }

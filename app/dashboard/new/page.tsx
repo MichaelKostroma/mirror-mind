@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect } from "react"
+import { FormEvent, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,11 +8,10 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
-import getSupabaseClient from "@/lib/supabase-global"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertTriangle, Database, ArrowLeft } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { getCurrentUser } from "@/lib/supabase/auth-utils"
+import { User } from "@/lib/types"
 
 export default function NewDecision() {
   const [title, setTitle] = useState("")
@@ -21,9 +19,8 @@ export default function NewDecision() {
   const [decision, setDecision] = useState("")
   const [reasoning, setReasoning] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isTableMissing, setIsTableMissing] = useState(false)
   const [isCheckingTable, setIsCheckingTable] = useState(true)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -37,8 +34,9 @@ export default function NewDecision() {
           return
         }
         setUser(currentUser)
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Auth error:", error)
+        // Redirect to login page if authentication fails
         router.push("/login")
       }
     }
@@ -46,30 +44,15 @@ export default function NewDecision() {
     checkAuth()
   }, [router])
 
-  // Check if the decisions table exists
+  // Skip checking if the decisions table exists as the database is already created
   useEffect(() => {
     if (!user) return
 
-    async function checkTable() {
-      try {
-        const supabase = getSupabaseClient()
-        const { error } = await supabase.from("decisions").select("id").limit(1).maybeSingle()
-
-        if (error && error.message.includes("relation") && error.message.includes("does not exist")) {
-          setIsTableMissing(true)
-        }
-      } catch (error) {
-        console.error("Error checking table:", error)
-        setIsTableMissing(true)
-      } finally {
-        setIsCheckingTable(false)
-      }
-    }
-
-    checkTable()
+    // Set isCheckingTable to false immediately
+    setIsCheckingTable(false)
   }, [user])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
@@ -100,28 +83,22 @@ export default function NewDecision() {
 
       toast({
         title: "Decision created",
-        description: "Your decision has been recorded and is being analyzed.",
+        description: "Your decision has been recorded and analyzing.",
       })
 
       router.push("/dashboard")
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error creating decision:", error)
 
-      if (error.message?.includes("relation") && error.message?.includes("does not exist")) {
-        setIsTableMissing(true)
-        toast({
-          title: "Database not set up",
-          description: "The database tables haven't been created yet. Please set up your database.",
-          variant: "destructive",
-        })
-      } else {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to create decision. Please try again.",
-          variant: "destructive",
-        })
-      }
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Always show a generic error message since we assume the database exists
+      toast({
+        title: "Error",
+        description: errorMessage || "Failed to create decision. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -144,43 +121,6 @@ export default function NewDecision() {
                 <p>Loading...</p>
               </div>
             </CardContent>
-          </Card>
-        </div>
-    )
-  }
-
-  if (isTableMissing) {
-    return (
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center mb-6">
-            <Link href="/dashboard" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
-            </Link>
-          </div>
-          <h1 className="text-3xl font-bold mb-6">Database Setup Required</h1>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Database className="mr-2 h-5 w-5" />
-                Database Setup Required
-              </CardTitle>
-              <CardDescription>The database tables for Mirror Mind haven't been created yet.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Alert variant="destructive" className="mb-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Missing Database Tables</AlertTitle>
-                <AlertDescription>
-                  Please go to the dashboard for instructions on how to set up your database.
-                </AlertDescription>
-              </Alert>
-            </CardContent>
-            <CardFooter>
-              <Button asChild>
-                <Link href="/dashboard">Go to Dashboard</Link>
-              </Button>
-            </CardFooter>
           </Card>
         </div>
     )

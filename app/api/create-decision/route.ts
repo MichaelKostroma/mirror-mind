@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { analyzeDecision } from "@/lib/openai"
+import { DecisionData } from "@/lib/types"
 
 export async function POST(request: Request) {
     console.log("🎯 Create decision endpoint called")
@@ -63,11 +64,12 @@ export async function POST(request: Request) {
         analyzeDecisionInBackground(newDecision.id, { title, situation, decision, reasoning })
 
         return response
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("❌ Create decision error:", error)
+        const errorMessage = error instanceof Error ? error.message : String(error);
         return NextResponse.json(
             {
-                error: error.message,
+                error: errorMessage,
                 success: false,
             },
             { status: 500 },
@@ -78,7 +80,7 @@ export async function POST(request: Request) {
 // Background analysis function (runs without blocking the response)
 async function analyzeDecisionInBackground(
     decisionId: string,
-    data: { title: string; situation: string; decision: string; reasoning?: string },
+    data: DecisionData,
 ) {
     console.log("🔬 Starting background analysis for decision:", decisionId)
 
@@ -119,7 +121,7 @@ async function analyzeDecisionInBackground(
         }
 
         console.log("✅ Background analysis saved to database")
-    } catch (analysisError: any) {
+    } catch (analysisError: unknown) {
         console.error("❌ Background analysis failed:", analysisError)
 
         try {
@@ -127,7 +129,7 @@ async function analyzeDecisionInBackground(
             const supabase = createServerComponentClient({ cookies })
             await supabase.from("decisions").update({ analysis_status: "failed" }).eq("id", decisionId)
             console.log("📝 Decision marked as failed")
-        } catch (markFailedError) {
+        } catch (markFailedError: unknown) {
             console.error("❌ Error marking decision as failed:", markFailedError)
         }
     }

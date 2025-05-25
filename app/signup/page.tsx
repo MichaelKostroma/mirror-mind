@@ -61,6 +61,7 @@ export default function Signup() {
 
     try {
       const supabase = getSupabaseClient()
+      console.log("getSupabaseClient", supabase)
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -69,6 +70,7 @@ export default function Signup() {
         },
       })
 
+      console.log("supabase.auth.signUp", {data, error})
       if (error) {
         throw error
       }

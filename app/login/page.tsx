@@ -140,12 +140,6 @@ export default function Login() {
         setLoginError(null)
         setLoginSuccess(true)
 
-        // Show success message
-        toast({
-          title: "Login successful!",
-          description: "Redirecting to dashboard...",
-        })
-
         // Navigate after a short delay to ensure the session is set
         setTimeout(navigateToDashboard, 1000)
       }
@@ -262,13 +256,6 @@ export default function Login() {
                       </AlertDescription>
                     </Alert>
                 )}
-
-                {loginSuccess && (
-                    <Alert>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <AlertDescription>Login successful! Redirecting to dashboard...</AlertDescription>
-                    </Alert>
-                )}
               </CardContent>
               <CardFooter className="flex flex-col space-y-4">
                 <Button type="submit" className="w-full" disabled={isLoading || loginSuccess}>
@@ -284,13 +271,6 @@ export default function Login() {
                       "Sign In"
                   )}
                 </Button>
-
-                {/* Temporary manual navigation button for testing */}
-                {loginSuccess && (
-                    <Button type="button" variant="outline" onClick={navigateToDashboard} className="w-full">
-                      Go to Dashboard Manually
-                    </Button>
-                )}
 
                 <div className="text-center text-sm">
                   Don&apos;t have an account?{" "}

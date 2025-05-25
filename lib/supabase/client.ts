@@ -1,16 +1,6 @@
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import getSupabaseClient from "@/lib/supabase-global"
 
-// Cache the client to avoid "Multiple GoTrueClient instances" warning
-let supabaseClient: ReturnType<typeof createClientComponentClient> | null = null
-
+// Re-export getSupabaseClient as createClient for backward compatibility
 export function createClient() {
-  if (supabaseClient) return supabaseClient
-
-  try {
-    supabaseClient = createClientComponentClient()
-    return supabaseClient
-  } catch (error) {
-    console.error("Error creating Supabase client:", error)
-    throw error
-  }
+  return getSupabaseClient()
 }

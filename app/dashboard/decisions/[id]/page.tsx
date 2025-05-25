@@ -1,7 +1,6 @@
 "use client"
 
 import { use, useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -13,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import getSupabaseClient from "@/lib/supabase-global"
 import { getCurrentUser } from "@/lib/supabase/auth-utils"
 import { MirrorLogo } from "@/components/mirror-logo"
+import { Decision } from "@/lib/types"
 
 interface PageProps {
   params: Promise<{
@@ -23,12 +23,11 @@ interface PageProps {
 export default function DecisionPage({ params }: PageProps) {
   // Use React.use() to unwrap the params Promise
   const resolvedParams = use(params)
-  const [decision, setDecision] = useState<any>(null)
-  const [user, setUser] = useState<any>(null)
+
+  const [decision, setDecision] = useState<Decision | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [authError, setAuthError] = useState(false)
-  const router = useRouter()
 
   useEffect(() => {
     const loadDecision = async () => {
@@ -45,8 +44,6 @@ export default function DecisionPage({ params }: PageProps) {
           return
         }
 
-        setUser(currentUser)
-
         // Validate the ID parameter
         if (!resolvedParams.id || typeof resolvedParams.id !== "string") {
           setError("Invalid decision ID")
@@ -61,7 +58,7 @@ export default function DecisionPage({ params }: PageProps) {
             .select("*")
             .eq("id", resolvedParams.id)
             .eq("user_id", currentUser.id)
-            .single()
+            .single<Decision>()
 
         if (decisionError) {
           console.error("Database error:", decisionError)
@@ -93,6 +90,46 @@ export default function DecisionPage({ params }: PageProps) {
 
     loadDecision()
   }, [resolvedParams.id])
+
+  useEffect(() => {
+    if (!decision || decision.analysis_status !== "pending") {
+      return
+    }
+    console.log("🔄 Setting up auto-refresh for pending decision")
+
+    const interval = setInterval(async () => {
+      try {
+        const currentUser = await getCurrentUser()
+        if (!currentUser) return
+
+        const supabase = getSupabaseClient()
+        console.log("🔄 Auto-refreshing decision...")
+
+        const { data: updatedDecision, error } = await supabase
+            .from("decisions")
+            .select("*")
+            .eq("id", resolvedParams.id)
+            .eq("user_id", currentUser.id)
+            .single<Decision>()
+
+        if (!error && updatedDecision) {
+          setDecision(updatedDecision)
+
+          if (updatedDecision.analysis_status !== "pending") {
+            console.log("🛑 Clearing auto-refresh interval")
+            clearInterval(interval)
+          }
+        }
+      } catch (err) {
+        console.error("Error refetching decision:", err)
+      }
+    }, 5000)
+
+    return () => {
+      console.log("🛑 Clearing auto-refresh interval")
+      clearInterval(interval)
+    }
+  }, [decision?.analysis_status, resolvedParams.id])
 
   if (isLoading) {
     return (
@@ -188,7 +225,7 @@ export default function DecisionPage({ params }: PageProps) {
     }
   }
 
-  const statusColors = {
+  const statusColors: Record<Decision["analysis_status"], string> = {
     pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
     completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
     failed: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
@@ -271,7 +308,13 @@ export default function DecisionPage({ params }: PageProps) {
                 </CardContent>
               </Card>
           ) : (
-              <DecisionAnalysis decision={decision} />
+              <DecisionAnalysis decision={{
+                ...decision,
+                title: decision.title || "Untitled Decision",
+                situation: decision.situation || "No situation provided",
+                decision: decision.decision || "No decision provided",
+                created_at: decision.created_at || new Date().toISOString(),
+              }} />
           )}
         </div>
       </div>
