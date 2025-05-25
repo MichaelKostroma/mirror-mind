@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
+import { waitUntil } from '@vercel/functions'
 import { analyzeDecision } from "@/lib/openai"
 import { DecisionData } from "@/lib/types"
 import { NextRequest } from "next/server"
@@ -8,7 +9,7 @@ import { NextRequest } from "next/server"
 export const runtime = 'edge';
 
 
-export async function POST(request: NextRequest,  context: { waitUntil?: (p: Promise<any>) => void }) {
+export async function POST(request: NextRequest) {
     console.log("🎯 Create decision endpoint called")
 
     try {
@@ -57,15 +58,8 @@ export async function POST(request: NextRequest,  context: { waitUntil?: (p: Pro
         console.log("✅ Decision created with ID:", newDecision.id)
 
         const bg = analyzeDecisionInBackground(newDecision.id, { title, situation, decision, reasoning })
+        waitUntil(bg)
 
-        if (typeof context.waitUntil === 'function') {
-            // on Vercel Edge: schedules without blocking the response
-            context.waitUntil(bg)
-        } else {
-            // locally: kick it off but don't block (dev server will stay alive long enough)
-            bg.catch(err => console.error("❌ Background analysis failed:", err))
-        }
-        // Create and return the response object immediately
         return NextResponse.json({
             success: true,
             decision: newDecision,
